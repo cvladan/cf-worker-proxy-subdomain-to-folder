@@ -22,19 +22,17 @@ export default {
 
     const originResponse = await fetch(originRequest);
 
-    // Rewrite Set-Cookie headers
+    // Duplicate Set-Cookie headers
     const newHeaders = new Headers(originResponse.headers);
-    const cookieHeaders = [];
-    for (const [name, value] of originResponse.headers.entries()) {
-      if (name.toLowerCase() === 'set-cookie') {
-        const rewrittenCookie = value
-          .replace(/Domain=[^;]+/gi, `Domain=${targetUrl.hostname}`)
-          .replace(/Path=[^;]+/gi, `Path=${targetUrl.pathname}`);
-        cookieHeaders.push(rewrittenCookie);
-      }
-    }
-    newHeaders.delete('Set-Cookie');
-    cookieHeaders.forEach(cookie => newHeaders.append('Set-Cookie', cookie));
+    const originalCookies = originResponse.headers.getAll('Set-Cookie');
+
+    originalCookies.forEach(cookie => {
+      const rewrittenCookie = cookie
+        .replace(/Domain=[^;]+/gi, `Domain=${targetUrl.hostname}`)
+        .replace(/Path=[^;]+/gi, `Path=${targetUrl.pathname}`);
+
+      newHeaders.append('Set-Cookie', rewrittenCookie);
+    });
 
     // Check content type
 
