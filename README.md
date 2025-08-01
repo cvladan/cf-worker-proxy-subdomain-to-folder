@@ -14,7 +14,7 @@ This is the primary worker that handles the proxying and content rewriting. It i
 **Key Features:**
 
 *   **Proxies Requests:** Forwards requests from the target URL (e.g., `https://www.weddyplace.com/karten`) to the origin server (e.g., `https://hochzeitskarten.weddyplace.com`).
-*   **Rewrites Cookies:** Modifies `Set-Cookie` headers to ensure they are valid for the target domain.
+*   **Rewrites Cookies:** Rewrites `Set-Cookie` headers to the parent domain with a path of `/`.
 *   **Rewrites HTML:** Uses `HTMLRewriter` to update attributes like `href`, `src`, and `action` in HTML elements.
 *   **Rewrites CSS:** Rewrites `url()` paths in CSS files and inline styles.
 *   **Rewrites JavaScript:** Replaces hardcoded origin URLs in JavaScript files and inline scripts.
@@ -35,7 +35,7 @@ npx wrangler deploy --config wrangler.jsonc
 
 ### Subdomain Worker (`src/subdomain-worker.js`)
 
-This worker is intended to be deployed on the subdomain route. It duplicates cookies from the main domain to the subdomain. It is configured using `wrangler.subdomain.jsonc`.
+This worker is intended to be deployed on the subdomain route. It rewrites cookies to the parent domain with a path of `/`. It is configured using `wrangler.subdomain.jsonc`.
 
 **To deploy the subdomain worker:**
 

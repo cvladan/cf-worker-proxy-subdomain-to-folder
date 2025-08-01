@@ -1,25 +1,28 @@
-const TARGET_DOMAIN = 'www.weddyplace.com';
-const TARGET_PATH = '/karten';
+const TARGET_DOMAIN = 'weddyplace.com';
 
 export default {
   async fetch(request) {
-    const url = new URL(request.url);
-
     // Forward the request to the original destination
     const originResponse = await fetch(request);
 
     // Create a new Headers object to modify cookies
     const newHeaders = new Headers(originResponse.headers);
 
-    const originalCookies = originResponse.headers.getAll('Set-Cookie');
+    const cookieHeaders = [];
+    for (const [name, value] of originResponse.headers.entries()) {
+      if (name.toLowerCase() === 'set-cookie') {
+        const rewrittenCookie = value
+          .replace(/Domain=[^;]+/gi, `Domain=${TARGET_DOMAIN}`)
+          .replace(/Path=[^;]+/gi, 'Path=/');
+        cookieHeaders.push(rewrittenCookie);
+      }
+    }
 
-    originalCookies.forEach(cookie => {
-      const rewrittenCookie = cookie
-        .replace(/Domain=[^;]+/gi, `Domain=${TARGET_DOMAIN}`)
-        .replace(/Path=[^;]+/gi, `Path=${TARGET_PATH}`);
+    if (cookieHeaders.length > 0) {
+        newHeaders.delete('Set-Cookie');
+        cookieHeaders.forEach(cookie => newHeaders.append('Set-Cookie', cookie));
+    }
 
-      newHeaders.append('Set-Cookie', rewrittenCookie);
-    });
 
     return new Response(originResponse.body, {
       status: originResponse.status,
