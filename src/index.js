@@ -86,19 +86,49 @@ export default {
     // Process HTML files
     if (isHTML) {
       const rewriter = new HTMLRewriter()
+        .on('head', {
+          element(element) {
+            element.prepend(`
+              <script>
+                (function() {
+                  const newDomain = "${parentDomain}";
+                  const originalCookieDescriptor = Object.getOwnPropertyDescriptor(Document.prototype, 'cookie');
+                  if (!originalCookieDescriptor) {
+                      console.error("Could not get original cookie descriptor.");
+                      return;
+                  }
+                  Object.defineProperty(Document.prototype, 'cookie', {
+                      get: function() {
+                          return originalCookieDescriptor.get.call(document);
+                      },
+                      set: function(cookieString) {
+                          let modifiedCookieString = cookieString;
+                          const domainRegex = /;\\s*domain=[^;]+/i;
+                          if (domainRegex.test(cookieString)) {
+                              modifiedCookieString = cookieString.replace(domainRegex, \`; domain=\${newDomain}\`);
+                          } else {
+                              modifiedCookieString = \`\${cookieString}; domain=\${newDomain}\`;
+                          }
+                          originalCookieDescriptor.set.call(document, modifiedCookieString);
+                      }
+                  });
+                })();
+              </script>
+            `, { html: true });
+          }
+        })
         .on('a, img, link, script, iframe, form, source, track, video, audio', new AttributeRewriter(['href', 'src', 'action']))
         .on('meta', new AttributeRewriter(['content']))
         .on('*', new AttributeRewriter(['data-url', 'data-href', 'data-src', 'data-action']))
         .on('style', new CSSRewriter())
         .on('script', new JavaScriptRewriter());
 
-      return rewriter.transform(
-        new Response(originResponse.body, {
-          status: originResponse.status,
-          statusText: originResponse.statusText,
-          headers: newHeaders
-        })
-      );
+      const rewrittenResponse = rewriter.transform(originResponse);
+      return new Response(rewrittenResponse.body, {
+        status: originResponse.status,
+        statusText: originResponse.statusText,
+        headers: newHeaders,
+      });
     }
 
     // For other file types, return as-is
