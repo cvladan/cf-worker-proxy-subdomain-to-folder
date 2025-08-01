@@ -36,7 +36,7 @@ npx wrangler deploy --config wrangler.jsonc
 
 ### Subdomain Worker (`src/subdomain-worker.js`)
 
-This worker is intended to be deployed on the subdomain route. It rewrites cookies to the parent domain with a path of `/`. It is configured using `wrangler.subdomain.jsonc`.
+This worker is intended to be deployed on the subdomain route. It rewrites cookies to the parent domain with a path of `/` and also rewrites canonical link tags in HTML content to point to the target subfolder URL. It is configured using `wrangler.subdomain.jsonc`.
 
 **To deploy the subdomain worker:**
 
