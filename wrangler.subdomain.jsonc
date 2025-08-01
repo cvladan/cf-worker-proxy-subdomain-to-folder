@@ -1,0 +1,12 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "cf-worker-proxy-subdomain-cookie-duplicator",
+	"main": "src/subdomain-worker.js",
+	"compatibility_date": "2023-11-21",
+	"routes": [
+		{
+			"pattern": "hochzeitskarten.weddyplace.com/*",
+			"zone_name": "weddyplace.com"
+		}
+	]
+}

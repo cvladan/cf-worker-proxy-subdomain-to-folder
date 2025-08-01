@@ -20,32 +20,36 @@ This is the primary worker that handles the proxying and content rewriting. It i
 
 ## How to Use
 
-### Deployment
+This project includes two separate workers, each with its own configuration file.
 
-1.  **Configure `wrangler.toml`:** Set up your Cloudflare account ID and the route for the worker.
-2.  **Deploy:** Use the `npm run deploy` command to publish the worker to your Cloudflare account.
+### Main Worker (`src/index.js`)
 
-**Example `wrangler.toml` configuration:**
+This is the primary worker that handles the proxying and content rewriting. It is configured using `wrangler.jsonc`.
 
-```toml
-name = "cf-worker-proxy-subdomain-to-folder"
-main = "src/index.js"
-compatibility_date = "2023-11-21"
+**To deploy the main worker:**
 
-[vars]
-ORIGIN = "https://hochzeitskarten.weddyplace.com"
-TARGET = "https://www.weddyplace.com/karten"
+```bash
+npx wrangler deploy --config wrangler.jsonc
+```
 
-[[routes]]
-pattern = "www.weddyplace.com/karten/*"
-zone_name = "weddyplace.com"
+### Subdomain Worker (`src/subdomain-worker.js`)
+
+This worker is intended to be deployed on the subdomain route. It duplicates cookies from the main domain to the subdomain. It is configured using `wrangler.subdomain.jsonc`.
+
+**To deploy the subdomain worker:**
+
+```bash
+npx wrangler deploy --config wrangler.subdomain.jsonc
 ```
 
 ### Local Development
 
 1.  **Install Dependencies:** Run `npm install`.
-2.  **Start Dev Server:** Run `npm run start` to test the worker locally.
-
-## Subdomain Worker
-
-A second, simpler worker will be created to handle requests to the subdomain directly. This worker's primary responsibility will be to manage cookies, ensuring a seamless user experience between the two domains. This worker is still under development.
+2.  **Start Dev Server for Main Worker:**
+    ```bash
+    npx wrangler dev --config wrangler.jsonc
+    ```
+3.  **Start Dev Server for Subdomain Worker:**
+    ```bash
+    npx wrangler dev --config wrangler.subdomain.jsonc
+    ```
