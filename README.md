@@ -18,6 +18,7 @@ This is the primary worker that handles the proxying and content rewriting. It i
 *   **Rewrites HTML:** Uses `HTMLRewriter` to update attributes like `href`, `src`, and `action` in HTML elements.
 *   **Rewrites CSS:** Rewrites `url()` paths in CSS files and inline styles.
 *   **Rewrites JavaScript:** Replaces hardcoded origin URLs in JavaScript files and inline scripts.
+*   **Handles Exception Paths:** Certain paths (defined in `REWRITE_TO_ORIGIN_PATHS`) are not proxied to the subfolder but are instead rewritten to point back to the original `ORIGIN` domain. This is useful for things like account pages, login/logout functionality, etc. that should not be part of the subfolder structure. For example, a path like `/account` will be rewritten to `https://hochzeitskarten.weddyplace.com/account`.
 
 ## How to Use
 

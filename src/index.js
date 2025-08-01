@@ -1,6 +1,19 @@
 const ORIGIN = 'https://hochzeitskarten.weddyplace.com';
 const TARGET = 'https://www.weddyplace.com/karten';
 
+const REWRITE_TO_ORIGIN_PATHS = [
+  '/account',
+  '/eigen_collectie',
+  '/account_orders',
+  '/account_adresboek',
+  '/account_address',
+  '/account_password',
+  '/account_email_preferences',
+  '/account_privacy',
+  '/logout',
+  '/create/basket',
+];
+
 export default {
   async fetch(request) {
     const url = new URL(request.url);
@@ -140,18 +153,40 @@ export default {
   }
 };
 
+function isExceptionPath(path) {
+  for (const exceptionPath of REWRITE_TO_ORIGIN_PATHS) {
+    if (path.startsWith(exceptionPath)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function rewritePath(path) {
   if (!path || typeof path !== 'string') return path;
 
   const targetUrl = new URL(TARGET);
   const originUrl = new URL(ORIGIN);
 
-  // Skip if already rewritten
+  // Handle exception paths - prepend with ORIGIN domain
+  if (isExceptionPath(path)) {
+    // If it's already a full URL with ORIGIN, return as-is
+    if (path.startsWith(ORIGIN)) {
+      return path;
+    }
+    // If it's an absolute path, prepend with ORIGIN
+    if (path.startsWith('/')) {
+      return `${ORIGIN}${path}`;
+    }
+    return path;
+  }
+
+  // Skip if already rewritten to TARGET
   if (path.startsWith(targetUrl.pathname + '/') || path.startsWith(targetUrl.pathname + '?')) {
     return path;
   }
 
-  // Handle full origin URLs
+  // Handle full origin URLs - rewrite to TARGET
   if (path.startsWith(ORIGIN)) {
     const relativePath = path.substring(ORIGIN.length);
     return `${targetUrl.pathname}${relativePath}`;
@@ -163,7 +198,7 @@ function rewritePath(path) {
     return `${targetUrl.pathname}${relativePath}`;
   }
 
-  // Handle absolute paths
+  // Handle absolute paths - rewrite to TARGET
   if (path.startsWith('/')) {
     return `${targetUrl.pathname}${path}`;
   }
@@ -201,12 +236,12 @@ function rewriteCSSContent(cssText) {
 
 // Function to rewrite JavaScript content
 function rewriteJavaScriptContent(jsText) {
-  const targetUrl = new URL(TARGET);
-  const originUrl = new URL(ORIGIN);
-
   return jsText
-    // Replace full origin URLs
-    .replace(new RegExp(escapeRegExp(ORIGIN), 'g'), targetUrl.pathname)
+    // Replace full origin URLs - use rewritePath for consistent handling
+    .replace(new RegExp(escapeRegExp(ORIGIN) + '([^\\s"\']*)', 'g'), (match, pathPart) => {
+      const fullPath = `${ORIGIN}${pathPart}`;
+      return rewritePath(fullPath);
+    })
     // Replace quoted absolute paths - FIXED: require / immediately after quote
     .replace(/(['"`])(\/)([a-zA-Z0-9][a-zA-Z0-9._\/-]*(?:\.[a-zA-Z]{2,4})?(?:\?[^'"`]*)?)\1/g,
       (match, quote, slash, path) => {
