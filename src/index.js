@@ -29,14 +29,19 @@ export default {
 
     for (const [name, value] of originResponse.headers.entries()) {
       if (name.toLowerCase() === 'set-cookie') {
-        const rewrittenCookie = value
-          .replace(/Domain=[^;]+/gi, `Domain=${parentDomain}`)
-          .replace(/Path=[^;]+/gi, 'Path=/');
+        let rewrittenCookie = value.replace(/Path=[^;]+/gi, 'Path=/');
+        if (/Domain=/i.test(rewrittenCookie)) {
+          rewrittenCookie = rewrittenCookie.replace(/Domain=[^;]+/gi, `Domain=${parentDomain}`);
+        } else {
+          rewrittenCookie += `; Domain=${parentDomain}`;
+        }
         cookieHeaders.push(rewrittenCookie);
       }
     }
-    newHeaders.delete('Set-Cookie');
-    cookieHeaders.forEach(cookie => newHeaders.append('Set-Cookie', cookie));
+    if (cookieHeaders.length > 0) {
+      newHeaders.delete('Set-Cookie');
+      cookieHeaders.forEach(cookie => newHeaders.append('Set-Cookie', cookie));
+    }
 
     // Check content type
 

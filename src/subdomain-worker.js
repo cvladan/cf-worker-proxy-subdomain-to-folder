@@ -11,9 +11,12 @@ export default {
     const cookieHeaders = [];
     for (const [name, value] of originResponse.headers.entries()) {
       if (name.toLowerCase() === 'set-cookie') {
-        const rewrittenCookie = value
-          .replace(/Domain=[^;]+/gi, `Domain=${TARGET_DOMAIN}`)
-          .replace(/Path=[^;]+/gi, 'Path=/');
+        let rewrittenCookie = value.replace(/Path=[^;]+/gi, 'Path=/');
+        if (/Domain=/i.test(rewrittenCookie)) {
+          rewrittenCookie = rewrittenCookie.replace(/Domain=[^;]+/gi, `Domain=${TARGET_DOMAIN}`);
+        } else {
+          rewrittenCookie += `; Domain=${TARGET_DOMAIN}`;
+        }
         cookieHeaders.push(rewrittenCookie);
       }
     }
