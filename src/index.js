@@ -1,15 +1,234 @@
-/**
- * Welcome to Cloudflare Workers! This is your first worker.
- *
- * - Run `npm run dev` in your terminal to start a development server
- * - Open a browser tab at http://localhost:8787/ to see your worker in action
- * - Run `npm run deploy` to publish your worker
- *
- * Learn more at https://developers.cloudflare.com/workers/
- */
+const ORIGIN = 'https://hochzeitskarten.weddyplace.com';
+const TARGET = 'https://www.weddyplace.com/karten';
 
 export default {
-	async fetch(request, env, ctx) {
-		return new Response('Hello World!');
-	},
+  async fetch(request) {
+    const url = new URL(request.url);
+    const targetUrl = new URL(TARGET);
+    const originUrl = new URL(ORIGIN);
+
+    // Build origin request URL
+    const path = url.pathname.replace(new RegExp(`^${targetUrl.pathname}`), '');
+    const originRequestUrl = `${ORIGIN}${path}${url.search}`;
+
+    // Proxy request to origin
+    const originRequest = new Request(originRequestUrl, {
+      method: request.method,
+      headers: request.headers,
+      body: request.body,
+      redirect: 'manual'
+    });
+    originRequest.headers.set('Host', originUrl.hostname);
+
+    const originResponse = await fetch(originRequest);
+
+    // Rewrite Set-Cookie headers
+    const newHeaders = new Headers(originResponse.headers);
+    const cookieHeaders = [];
+    for (const [name, value] of originResponse.headers.entries()) {
+      if (name.toLowerCase() === 'set-cookie') {
+        const rewrittenCookie = value
+          .replace(/Domain=[^;]+/gi, `Domain=${targetUrl.hostname}`)
+          .replace(/Path=[^;]+/gi, `Path=${targetUrl.pathname}`);
+        cookieHeaders.push(rewrittenCookie);
+      }
+    }
+    newHeaders.delete('Set-Cookie');
+    cookieHeaders.forEach(cookie => newHeaders.append('Set-Cookie', cookie));
+
+    // Check content type
+
+    // Cache compiled regexes
+    const CSS_URL_PATTERN = /url\((['"]?)([^)'"]*)(\1)\)/g;
+    const ORIGIN_PATTERN = new RegExp(escapeRegExp(ORIGIN), 'g');
+
+    // Use more specific content-type checks
+    function isContentType(headers, types) {
+      const contentType = headers.get('content-type')?.toLowerCase() || '';
+      return types.some(type => contentType.includes(type));
+    }
+
+    const isHTML = isContentType(originResponse.headers, ['text/html']);
+    const isCSS = isContentType(originResponse.headers, ['text/css']) || path.endsWith('.css');
+    const isJS = isContentType(originResponse.headers, ['javascript', 'application/javascript']) || path.endsWith('.js');
+
+    // Process CSS files
+    if (isCSS) {
+      const cssContent = await originResponse.text();
+      const rewrittenCSS = rewriteCSSContent(cssContent);
+
+      return new Response(rewrittenCSS, {
+        status: originResponse.status,
+        statusText: originResponse.statusText,
+        headers: newHeaders
+      });
+    }
+
+    // Process JavaScript files
+    if (isJS) {
+      const jsContent = await originResponse.text();
+      const rewrittenJS = rewriteJavaScriptContent(jsContent);
+
+      return new Response(rewrittenJS, {
+        status: originResponse.status,
+        statusText: originResponse.statusText,
+        headers: newHeaders
+      });
+    }
+
+    // Process HTML files
+    if (isHTML) {
+      const rewriter = new HTMLRewriter()
+        .on('a, img, link, script, iframe, form, source, track, video, audio', new AttributeRewriter(['href', 'src', 'action']))
+        .on('meta', new AttributeRewriter(['content']))
+        .on('*', new AttributeRewriter(['data-url', 'data-href', 'data-src', 'data-action']))
+        .on('style', new CSSRewriter())
+        .on('script', new JavaScriptRewriter());
+
+      return rewriter.transform(
+        new Response(originResponse.body, {
+          status: originResponse.status,
+          statusText: originResponse.statusText,
+          headers: newHeaders
+        })
+      );
+    }
+
+    // For other file types, return as-is
+    return new Response(originResponse.body, {
+      status: originResponse.status,
+      statusText: originResponse.statusText,
+      headers: newHeaders
+    });
+  }
 };
+
+function rewritePath(path) {
+  if (!path || typeof path !== 'string') return path;
+
+  const targetUrl = new URL(TARGET);
+  const originUrl = new URL(ORIGIN);
+
+  // Skip if already rewritten
+  if (path.startsWith(targetUrl.pathname + '/') || path.startsWith(targetUrl.pathname + '?')) {
+    return path;
+  }
+
+  // Handle full origin URLs
+  if (path.startsWith(ORIGIN)) {
+    const relativePath = path.substring(ORIGIN.length);
+    return `${targetUrl.pathname}${relativePath}`;
+  }
+
+  // Handle protocol-relative URLs
+  if (path.startsWith(`//${originUrl.hostname}`)) {
+    const relativePath = path.substring(`//${originUrl.hostname}`.length);
+    return `${targetUrl.pathname}${relativePath}`;
+  }
+
+  // Handle absolute paths
+  if (path.startsWith('/')) {
+    return `${targetUrl.pathname}${path}`;
+  }
+
+  // Skip relative paths and external URLs
+  return path;
+}
+
+
+// Function to rewrite CSS content
+function rewriteCSSContent(cssText) {
+  const targetUrl = new URL(TARGET);
+
+  // Pattern for site-root-relative URLs
+  const relativePattern = /url\((['"]?)\/([^)'"]*)(\1)\)/g;
+
+  // Pattern for origin absolute URLs
+  const escapedOrigin = ORIGIN.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const domainPattern = new RegExp(
+    `url\\((['"]?)${escapedOrigin}([^)'"]*)\\1\\)`,
+    'g'
+  );
+
+  return cssText
+    .replace(domainPattern, (match, quote, path) => {
+      const fullPath = `${ORIGIN}${path}`;
+      const rewritten = rewritePath(fullPath);
+      return `url(${quote}${rewritten}${quote})`;
+    })
+    .replace(relativePattern, (match, quote, path, endQuote) => {
+      const rewritten = rewritePath(`/${path}`);
+      return `url(${quote}${rewritten}${endQuote})`;
+    });
+}
+
+// Function to rewrite JavaScript content
+function rewriteJavaScriptContent(jsText) {
+  const targetUrl = new URL(TARGET);
+  const originUrl = new URL(ORIGIN);
+
+  return jsText
+    // Replace full origin URLs
+    .replace(new RegExp(escapeRegExp(ORIGIN), 'g'), targetUrl.pathname)
+    // Replace quoted absolute paths - FIXED: require / immediately after quote
+    .replace(/(['"`])(\/)([a-zA-Z0-9][a-zA-Z0-9._\/-]*(?:\.[a-zA-Z]{2,4})?(?:\?[^'"`]*)?)\1/g,
+      (match, quote, slash, path) => {
+        const fullPath = slash + path;
+        // More strict validation - must look like a web resource path
+        if (
+          // Has file extension
+          fullPath.match(/\.(js|css|json|svg|png|jpg|jpeg|gif|webp|html|php|xml|txt|ico|woff|woff2|ttf|eot)(\?|$)/i) ||
+          // Starts with common web directories
+          fullPath.match(/^\/(api|assets|static|js|css|img|images|fonts|media|uploads|files|public)\b/i) ||
+          // Looks like an API endpoint
+          fullPath.match(/^\/(api|ajax|rest|graphql)\b/i)
+        ) {
+          return `${quote}${rewritePath(fullPath)}${quote}`;
+        }
+        return match;
+      });
+}
+
+function escapeRegExp(string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// Generic handler to rewrite element attributes
+class AttributeRewriter {
+  constructor(attributeNames) {
+    this.attributeNames = Array.isArray(attributeNames) ? attributeNames : [attributeNames];
+  }
+
+  element(element) {
+    this.attributeNames.forEach(attr => {
+      const value = element.getAttribute(attr);
+      if (!value) return;
+
+      const updated = rewritePath(value);
+
+      if (updated !== value) {
+        element.setAttribute(attr, updated);
+      }
+    });
+  }
+}
+
+// Handler to rewrite url()s inside inline CSS
+class CSSRewriter {
+  text(text) {
+    const rewritten = rewriteCSSContent(text.text);
+    if (rewritten !== text.text) {
+      text.replace(rewritten, { html: true });
+    }
+  }
+}
+
+// Handler to rewrite paths inside inline JavaScript
+class JavaScriptRewriter {
+  text(text) {
+    const rewritten = rewriteJavaScriptContent(text.text);
+    if (rewritten !== text.text) {
+      text.replace(rewritten, { html: true });
+    }
+  }
+}
