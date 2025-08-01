@@ -1,6 +1,6 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
-	"name": "cf-worker-proxy-subdomain-to-folder",
+	"name": "proxy-to-folder-main",
 	"main": "src/index.js",
 	"compatibility_date": "2023-11-21",
 	"vars": {
