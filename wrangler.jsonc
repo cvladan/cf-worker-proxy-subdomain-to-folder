@@ -8,9 +8,24 @@
 		"TARGET": "https://www.weddyplace.com/karten"
 	},
 	"routes": [
-		{
-			"pattern": "www.weddyplace.com/karten/*",
-			"zone_name": "weddyplace.com"
-		}
+		{"pattern": "www.weddyplace.com/karten/*", "zone_name": "weddyplace.com"},
+		{"pattern": "www.weddyplace.com/reset_password_async*", "zone_name": "weddyplace.com"},
+		{"pattern": "www.weddyplace.com/login_async*", "zone_name": "weddyplace.com"},
+		{"pattern": "www.weddyplace.com/register_async*", "zone_name": "weddyplace.com"},
+		{"pattern": "www.weddyplace.com/session_json*", "zone_name": "weddyplace.com"},
+		{"pattern": "www.weddyplace.com/get_all_cat_prices*", "zone_name": "weddyplace.com"},
+		{"pattern": "www.weddyplace.com/designs*", "zone_name": "weddyplace.com"},
+		{"pattern": "www.weddyplace.com/get_prices_for_options/*", "zone_name": "weddyplace.com"},
+		{"pattern": "www.weddyplace.com/common/img/*", "zone_name": "weddyplace.com"},
+		{"pattern": "www.weddyplace.com/design_count*", "zone_name": "weddyplace.com"},
+		{"pattern": "www.weddyplace.com/filter_count*", "zone_name": "weddyplace.com"},
+		{"pattern": "www.weddyplace.com/get_product_action_logger_data*", "zone_name": "weddyplace.com"},
+		{"pattern": "www.weddyplace.com/create/*", "zone_name": "weddyplace.com"},
+		{"pattern": "www.weddyplace.com/product_builder/*", "zone_name": "weddyplace.com"},
+		{"pattern": "www.weddyplace.com/login*", "zone_name": "weddyplace.com"},
+		{"pattern": "www.weddyplace.com/account_adresboek*", "zone_name": "weddyplace.com"},
+		{"pattern": "www.weddyplace.com/imgbase/*", "zone_name": "weddyplace.com"},
+		{"pattern": "www.weddyplace.com/api/*", "zone_name": "weddyplace.com"},
+		{"pattern": "www.weddyplace.com/_/shopimg/*", "zone_name": "weddyplace.com"}
 	]
 }
