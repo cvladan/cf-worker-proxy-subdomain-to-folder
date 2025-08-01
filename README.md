@@ -1,5 +1,6 @@
 # Cloudflare Worker - Subdomain to Subfolder Proxy
 
+**Important:** For this setup to work, both the main domain (e.g., `www.weddyplace.com`) and the subdomain (e.g., `hochzeitskarten.weddyplace.com`) must be proxied through Cloudflare.
 This Cloudflare Worker proxies requests from a subdomain to a subfolder on another domain, rewriting HTML, CSS, and JavaScript content to ensure all links and resources work correctly.
 
 ## How it Works
