@@ -1,6 +1,6 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
-	"name": "proxy-to-folder-subdomain",
+	"name": "hochzeitskarten-in-subfolder-subdomain",
 	"main": "src/subdomain-worker.js",
 	"compatibility_date": "2023-11-21",
 	"routes": [
