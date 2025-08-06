@@ -71,6 +71,7 @@ export default {
     const isHTML = isContentType(originResponse.headers, ['text/html']);
     const isCSS = isContentType(originResponse.headers, ['text/css']) || path.endsWith('.css');
     const isJS = isContentType(originResponse.headers, ['javascript', 'application/javascript']) || path.endsWith('.js');
+    const isSitemap = path.startsWith('/sitemap') || path.startsWith('sitemap');
 
     // Process CSS files
     if (isCSS) {
@@ -90,6 +91,18 @@ export default {
       const rewrittenJS = rewriteJavaScriptContent(jsContent);
 
       return new Response(rewrittenJS, {
+        status: originResponse.status,
+        statusText: originResponse.statusText,
+        headers: newHeaders
+      });
+    }
+
+    // Process sitemap files
+    if (isSitemap) {
+      const sitemapContent = await originResponse.text();
+      const rewrittenSitemap = rewriteSitemapContent(sitemapContent);
+
+      return new Response(rewrittenSitemap, {
         status: originResponse.status,
         statusText: originResponse.statusText,
         headers: newHeaders
@@ -303,4 +316,15 @@ class JavaScriptRewriter {
       text.replace(rewritten, { html: true });
     }
   }
+}
+
+// Function to rewrite sitemap content
+function rewriteSitemapContent(sitemapText) {
+  const targetUrl = new URL(TARGET);
+  const originUrl = new URL(ORIGIN);
+
+  // Replace URLs in sitemap from subdomain format to folder format
+  return sitemapText
+    .replace(new RegExp(escapeRegExp(ORIGIN), 'g'), `${targetUrl.origin}${targetUrl.pathname}`)
+    .replace(new RegExp(`${escapeRegExp(originUrl.origin)}`, 'g'), `${targetUrl.origin}${targetUrl.pathname}`);
 }
